@@ -1,4 +1,205 @@
 -----------------------------------------------
+----------- Exercícios - Procedures
+-----------------------------------------------
+
+-- 1.1 Adicione uma tabela de log ao sistema do restaurante. Ajuste cada procedimento para
+-- que ele registre
+-- - a data em que a operação aconteceu
+-- - o nome do procedimento executado
+
+CREATE TABLE tb_log(
+	cod_log SERIAL PRIMARY KEY,
+	data_operacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	nome_procedimento VARCHAR(100) NOT NULL
+);
+
+-- 1.2 Adicione um procedimento ao sistema do restaurante. Ele deve
+-- - receber um parâmetro de entrada (IN) que representa o código de um cliente
+-- - exibir, com RAISE NOTICE, o total de pedidos que o cliente tem
+
+CREATE OR REPLACE PROCEDURE sp_total_pedido (
+	
+	IN p_cod_cliente INT
+)
+
+LANGUAGE plpgsql
+AS $$
+DECLARE
+
+	qtdade_pedido INT;
+	
+BEGIN
+
+	SELECT COUNT(cod_pedido)
+	INTO qtdade_pedido 
+	FROM tb_pedido
+	WHERE cod_cliente = p_cod_cliente;
+	
+	
+	RAISE NOTICE 'Quantidade Pedidos %',  qtdade_pedido;
+
+END;
+$$;
+
+CALL sp_total_pedido(3);
+
+-- 1.3 Reescreva o exercício 1.2 de modo que o total de pedidos seja armazenado em uma
+-- variável de saída (OUT).
+
+DROP PROCEDURE IF EXISTS sp_total_pedido;
+CREATE OR REPLACE PROCEDURE sp_total_pedido (
+	
+	IN p_cod_cliente INT,
+	OUT qtdade_pedido INT
+)
+
+LANGUAGE plpgsql
+AS $$	
+BEGIN
+
+	SELECT COUNT(cod_pedido)
+	INTO qtdade_pedido 
+	FROM tb_pedido
+	WHERE cod_cliente = p_cod_cliente;
+	
+	
+	RAISE NOTICE 'Quantidade Pedidos %',  qtdade_pedido;
+
+END;
+$$;
+
+CALL sp_total_pedido(1, NULL);
+
+-- 1.4 Adicione um procedimento ao sistema do restaurante. Ele deve
+-- - Receber um parâmetro de entrada e saída (INOUT)
+-- - Na entrada, o parâmetro possui o código de um cliente
+-- - Na saída, o parâmetro deve possuir o número total de pedidos realizados pelo cliente
+
+CREATE OR REPLACE PROCEDURE sp_contar_pedidos(
+
+    INOUT p_cod_cliente INT
+
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+    SELECT COUNT(cod_pedido)
+    INTO p_cod_cliente
+    FROM tb_pedido
+    WHERE cod_cliente = p_cod_cliente;
+
+END;
+$$;
+
+CALL sp_contar_pedidos(1);
+
+-- 1.5 Adicione um procedimento ao sistema do restaurante. Ele deve
+-- - Receber um parâmetro VARIADIC contendo nomes de pessoas
+-- - Fazer uma inserção na tabela de clientes para cada nome recebido
+-- - Receber um parâmetro de saída que contém o seguinte texto:
+-- “Os clientes: Pedro, Ana, João etc foram cadastrados”
+-- Evidentemente, o resultado deve conter os nomes que de fato foram enviados por meio do
+-- parâmetro VARIADIC.
+DROP PROCEDURE IF EXISTS sp_cadastrar_clientes;
+CREATE OR REPLACE PROCEDURE sp_cadastrar_clientes(
+    OUT mensagem VARCHAR(250),
+    VARIADIC nomes VARCHAR[]
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    nome_atual VARCHAR(150);
+    nomes_cadastrados VARCHAR(250) := '';
+BEGIN
+    FOREACH nome_atual IN ARRAY nomes LOOP
+
+        INSERT INTO tb_cliente(nome)
+        VALUES (nome_atual);
+
+        IF nomes_cadastrados = '' THEN
+            nomes_cadastrados := nome_atual;
+        ELSE
+            nomes_cadastrados := nomes_cadastrados || ', ' || nome_atual;
+        END IF;
+
+    END LOOP;
+
+    mensagem := 'Os clientes: ' || nomes_cadastrados || ' foram cadastrados!';
+
+    RAISE NOTICE '%', mensagem;
+END;
+$$;
+
+CALL sp_cadastrar_clientes('Peter Pan', 'Anne', 'Lestat', 'William', 'Albus Dumbledore');
+
+-- 1.6 Para cada procedimento criado, escreva um bloco anônimo que o coloca em execução:
+
+----> 1.2 Bloco anônimo para executar sp_total_pedido com apenas IN
+
+DO $$
+BEGIN
+
+    CALL sp_total_pedido(3);
+
+END;
+$$;
+
+
+----> 1.3 Bloco anônimo para executar sp_total_pedido com OUT
+
+DO $$
+DECLARE
+
+    qtdade_pedido INT;
+
+BEGIN
+
+    CALL sp_total_pedido(1, qtdade_pedido);
+
+    RAISE NOTICE 'Total retornado pelo OUT: %', qtdade_pedido;
+
+END;
+$$;
+
+
+----> 1.4 Bloco anônimo para executar sp_contar_pedidos com INOUT
+
+DO $$
+DECLARE
+
+    cod_cliente_total_pedidos INT := 1;
+
+BEGIN
+
+    CALL sp_contar_pedidos(cod_cliente_total_pedidos);
+
+    RAISE NOTICE 'Total de pedidos do cliente: %', cod_cliente_total_pedidos;
+
+END;
+$$;
+
+
+----> 1.5 Bloco anônimo para executar sp_cadastrar_clientes com VARIADIC e OUT
+
+DO $$
+DECLARE
+
+    mensagem VARCHAR(250);
+
+BEGIN
+
+    CALL sp_cadastrar_clientes(
+        mensagem,
+        'William'
+    );
+
+    RAISE NOTICE '%', mensagem;
+
+END;
+$$;
+
+-----------------------------------------------
 ----------- STORED PROCEDURES
 -----------------------------------------------
 
@@ -689,3 +890,17 @@
 -- FOREACH numero IN ARRAY numeros LOOP
 --     soma := soma + numero;
 -- END LOOP;
+
+--------------------------
+
+-- ORDEM:
+
+-- CREATE PROCEDURE
+-- LANGUAGE
+-- AS $$
+-- DECLARE
+-- BEGIN
+-- END;
+-- $$;
+
+--------------------------
